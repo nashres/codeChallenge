@@ -4,6 +4,7 @@ import android.content.Context;
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
 import android.os.Bundle;
+import android.os.Handler;
 import android.support.design.widget.CoordinatorLayout;
 import android.support.design.widget.Snackbar;
 import android.support.v7.app.AppCompatActivity;
@@ -12,6 +13,7 @@ import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
 import android.util.Log;
 import android.view.View;
+import android.widget.ProgressBar;
 import android.widget.Toast;
 
 import com.github.nisrine.starredreposlisting.R;
@@ -37,21 +39,51 @@ public class MainActivity extends AppCompatActivity {
     public  RepositoriesAdapter adapter;
     RepositoryResponse repositoriesList;
 
+    private static final int PAGE_START = 1;
+    private int currentPage = PAGE_START;
+    private ProgressBar progressBar;
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-
         coordinatorLayout = findViewById(R.id.container);
         recyclerView = findViewById(R.id.linear_recyclerview);
-
+        progressBar = findViewById(R.id.repository_progress);
         LinearLayoutManager linearLayoutManager = new LinearLayoutManager(this);
         recyclerView.setHasFixedSize(true);
         recyclerView.setLayoutManager(new LinearLayoutManager(this));
         DividerItemDecoration dividerItemDecoration = new DividerItemDecoration(recyclerView.getContext(),
                 linearLayoutManager.getOrientation());
         recyclerView.addItemDecoration(dividerItemDecoration); // Add divider between items
+        recyclerView.addOnScrollListener(new RecyclerView.OnScrollListener() {
+            @Override
+            public void onScrollStateChanged(RecyclerView recyclerView, int newState) {
+                super.onScrollStateChanged(recyclerView, newState);
+            }
+
+            @Override
+            public void onScrolled(RecyclerView recyclerView, int dx, int dy) {
+
+                if (dy > 0) {
+                    if (!recyclerView.canScrollVertically(RecyclerView.FOCUS_DOWN)) {
+                        new Handler().postDelayed(new Runnable() {
+                            @Override
+                            public void run() {
+                                currentPage+=1;
+                                fetchNextPage();
+                                progressBar.setVisibility(View.VISIBLE);
+                            }
+                        }, 1000);
+
+                    }
+                    progressBar.setVisibility(View.INVISIBLE);
+
+                }
+            }
+        });
+
 
         //checking for network connectivity
         if (!isNetworkAvailable()) {
@@ -71,6 +103,7 @@ public class MainActivity extends AppCompatActivity {
         }
 
     }
+
 
     private void prepareData(RepositoryResponse repositoriesList) {
         adapter = new RepositoriesAdapter(repositoriesList.getItems());
@@ -92,7 +125,45 @@ public class MainActivity extends AppCompatActivity {
                             " Sucessful",
                             Toast.LENGTH_SHORT).show();
                     repositoriesList = response.body();
-                    prepareData(repositoriesList); // add response to recyclerview
+                    prepareData(repositoriesList);
+
+                } else {
+
+                    APIError error = ErrorUtils.parseError(response);
+                    Log.d("error message", error.message());
+                }
+            }
+
+            @Override
+            public void onFailure(Call<RepositoryResponse> call, Throwable t) {
+                Toast.makeText(MainActivity.this,
+                        "Request failed. Check your internet connection",
+                        Toast.LENGTH_SHORT).show();
+            }
+        });
+    }
+
+    private void fetchNextPage() {
+        Log.d(TAG, "loadNextPage: " + currentPage);
+        Map<String, String> data = new HashMap<>();
+        data.put("q", "created:>2017-10-22");
+        data.put("sort", "stars");
+        data.put("order", "desc");
+        data.put("page", String.valueOf(currentPage));
+        RepositoryApiService apiService = new RepositoryApiMaker().getService();
+        Call<RepositoryResponse>  repositoryListCall= apiService.getRepositoryList(data);
+        repositoryListCall.enqueue(new Callback<RepositoryResponse>() {
+            @Override
+            public void onResponse(Call<RepositoryResponse> call, Response<RepositoryResponse> response) {
+                if (response.isSuccessful()) {
+                    Toast.makeText(MainActivity.this,
+                            " Loading more  ",
+                            Toast.LENGTH_SHORT).show();
+                    RepositoryResponse repositoriesList2 = response.body();
+                    repositoriesList.getItems().addAll(repositoriesList2.getItems());
+                    Log.d("new size ",repositoriesList.getItems().size()+"");
+                    adapter.notifyDataSetChanged();
+
 
                 } else {
 
@@ -111,7 +182,6 @@ public class MainActivity extends AppCompatActivity {
     }
 
 
-
     private boolean isNetworkAvailable() {
         ConnectivityManager connectivityManager
                 = (ConnectivityManager) getSystemService(Context.CONNECTIVITY_SERVICE);
@@ -122,7 +192,5 @@ public class MainActivity extends AppCompatActivity {
         super.onResume();
         recyclerView.setAdapter(adapter);
     }
-
-
 
 }
