@@ -10,7 +10,7 @@ JSON Data is being fetched directly from the Github API(read more about Github A
 - Repository description<br>
 - Numbers of stars for the repo.<br>
 - Username and avatar of the owner.<br>
-<!--[BONUS] As a User I should be able to keep scrolling and new results should appear (pagination).-->
+- Pagination to show more data when Scrolling down
 <strong>Getting data from the server using Github API :</strong><br>
 
 <h2>Open source API used :</h2> <br>
@@ -31,12 +31,27 @@ https://api.github.com/search/repositories?q=created:>2017-10-22&sort=stars&orde
 
 This is how the result looks like : <br>
 `
-![capture](https://user-images.githubusercontent.com/4353553/35209859-cbbc70e0-ff47-11e7-8eb0-1ff26c3b4599.JPG)
-
-`Rows structure is being like bellow : <br>
+![capture](https://user-images.githubusercontent.com/4353553/35209859-cbbc70e0-ff47-11e7-8eb0-1ff26c3b4599.JPG) 
+`
+Rows structure is being like bellow : <br>
 
 ![row-explained](https://user-images.githubusercontent.com/4353553/35209538-7c91149a-ff46-11e7-9bb0-e300dd144110.png)
 ]()
+
+<h2> Pagination explained : </h2>
+
+The JSON data from Github is be paginated (30 repos per Json page)
+
+To get the 2nd page, we add &page=2 to the end of the API request like bellow : <br>
+
+https://api.github.com/search/repositories?q=created:>2017-10-22&sort=stars&order=desc&page=2 <br>
+
+Using Retrofit Library, it is easy to do that by adding the 'page' parameter to the QueryMap like bellow : <br>
+
+![3](https://user-images.githubusercontent.com/4353553/35211200-5fa0f89e-ff4d-11e7-9d7c-cf888b9c2c6a.JPG)
+
+<strong>currentPage</strong> is an incrementing variable according to every load
+
 
 
 <h2>Video walkthrough</h2>
